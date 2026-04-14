@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 1
+iteration: 2
 max_iterations: 5
 completion_promise: "PHASE2_COMPLETE"
 started_at: "2026-04-13T00:00:00Z"
