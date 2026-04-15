@@ -1,10 +1,17 @@
 import { getSupabase } from "@/lib/supabase";
+import { checkBusinessAccess } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ businessId: string }> }
 ) {
   const { businessId } = await params;
+
+  const access = await checkBusinessAccess(businessId);
+  if (!access) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const supabase = getSupabase();
   if (!supabase) {
     return Response.json({ error: "Database not configured" }, { status: 500 });
@@ -22,7 +29,8 @@ export async function GET(
   }
 
   // Compute per-platform summary
-  const platformSummary: Record<string, { total: number; mentioned: number }> = {};
+  const platformSummary: Record<string, { total: number; mentioned: number }> =
+    {};
   for (const r of results || []) {
     if (!platformSummary[r.platform]) {
       platformSummary[r.platform] = { total: 0, mentioned: 0 };

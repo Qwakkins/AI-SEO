@@ -1,10 +1,17 @@
 import { getSupabase } from "@/lib/supabase";
+import { checkBusinessAccess, requireAuth } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const access = await checkBusinessAccess(id);
+  if (!access) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const supabase = getSupabase();
   if (!supabase) {
     return Response.json({ error: "Database not configured" }, { status: 500 });
@@ -32,7 +39,11 @@ export async function GET(
     .eq("business_id", id)
     .order("period_start", { ascending: false });
 
-  return Response.json({ ...business, tracking_queries: queries, visibility_scores: scores });
+  return Response.json({
+    ...business,
+    tracking_queries: queries,
+    visibility_scores: scores,
+  });
 }
 
 export async function DELETE(
@@ -40,15 +51,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const { isAdmin } = await requireAuth();
+  if (!isAdmin) {
+    return Response.json({ error: "Forbidden — admin only" }, { status: 403 });
+  }
+
   const supabase = getSupabase();
   if (!supabase) {
     return Response.json({ error: "Database not configured" }, { status: 500 });
   }
 
-  const { error } = await supabase
-    .from("businesses")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("businesses").delete().eq("id", id);
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
