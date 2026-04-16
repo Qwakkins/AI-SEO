@@ -44,30 +44,22 @@ function normalizePhone(phone: string): string {
   return digits;
 }
 
-const ABBREV_MAP: Record<string, string> = {
-  " st ": " street ",
-  " st,": " street,",
-  " ave ": " avenue ",
-  " ave,": " avenue,",
-  " blvd ": " boulevard ",
-  " blvd,": " boulevard,",
-  " dr ": " drive ",
-  " dr,": " drive,",
-  " rd ": " road ",
-  " rd,": " road,",
-  " ln ": " lane ",
-  " ln,": " lane,",
-  " ct ": " court ",
-  " ct,": " court,",
-  " pl ": " place ",
-  " pl,": " place,",
+const ADDRESS_ABBREVIATIONS: Record<string, string> = {
+  st: "street",
+  ave: "avenue",
+  blvd: "boulevard",
+  dr: "drive",
+  rd: "road",
+  ln: "lane",
+  ct: "court",
+  pl: "place",
 };
 
 function normalizeAddress(addr: string): string {
   let s = addr.toLowerCase().replace(/,/g, " ");
-  for (const [abbr, full] of Object.entries(ABBREV_MAP)) {
-    // Apply repeatedly so trailing forms are caught
-    s = s.split(abbr).join(full);
+  for (const [abbr, full] of Object.entries(ADDRESS_ABBREVIATIONS)) {
+    // (?=\s|$) handles abbreviations at end of string
+    s = s.replace(new RegExp(`\\b${abbr}\\.?(?=\\s|$)`, "g"), full);
   }
   return s.replace(/\s+/g, " ").trim();
 }
@@ -150,6 +142,8 @@ export function matchFacts(
   }
 
   // ── Address ────────────────────────────────────────────────────────────────
+  // Compare extracted addresses against street only — AI responses typically
+  // mention just the street address, not the full city/state/zip.
   const aiAddress = facts.addresses[0] ?? null;
   const gtAddressFull = [
     gt.address_street,
@@ -162,9 +156,9 @@ export function matchFacts(
   const hasGTAddress = gtAddressFull.length > 0;
 
   if (aiAddress !== null) {
-    if (hasGTAddress) {
+    if (gt.address_street) {
       const normAI = normalizeAddress(aiAddress);
-      const normGT = normalizeAddress(gtAddressFull);
+      const normGT = normalizeAddress(gt.address_street);
       const dist = levenshtein(normAI, normGT);
       if (dist > 3) {
         flags.push({
@@ -176,6 +170,15 @@ export function matchFacts(
         });
       }
       // else: close enough — no flag
+    } else if (hasGTAddress) {
+      // GT has city/state/zip but no street — can't meaningfully compare
+      flags.push({
+        field: "address",
+        ai_claim: aiAddress,
+        ground_truth_value: null,
+        flag_type: "unverifiable",
+        confidence: 1.0,
+      });
     } else {
       flags.push({
         field: "address",
@@ -251,7 +254,7 @@ export function matchFacts(
       flags.push({
         field: "services",
         ai_claim: aiSvc,
-        ground_truth_value: null,
+        ground_truth_value: gtServices.join(", "),
         flag_type: "unverifiable",
         confidence: 0.7,
       });

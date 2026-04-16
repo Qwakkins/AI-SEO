@@ -90,6 +90,7 @@ export default function BusinessDetail() {
   const [groundTruth, setGroundTruth] = useState<GroundTruth | null>(null);
   const [flags, setFlags] = useState<HallucinationFlag[]>([]);
   const [savingGT, setSavingGT] = useState(false);
+  const [gtError, setGtError] = useState("");
   const [gtForm, setGtForm] = useState({
     phone: "",
     address_street: "",
@@ -166,6 +167,7 @@ export default function BusinessDetail() {
 
   async function saveGroundTruth() {
     setSavingGT(true);
+    setGtError("");
     const body = {
       phone: gtForm.phone || null,
       address_street: gtForm.address_street || null,
@@ -187,6 +189,9 @@ export default function BusinessDetail() {
     if (res.ok) {
       const data = await res.json();
       setGroundTruth(data);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setGtError(data.error || "Failed to save");
     }
     setSavingGT(false);
   }
@@ -661,6 +666,10 @@ export default function BusinessDetail() {
               Separate services with commas
             </p>
           </div>
+
+          {gtError && (
+            <p className="text-red-400 text-sm">{gtError}</p>
+          )}
 
           <div className="flex items-center justify-between pt-2">
             <button
