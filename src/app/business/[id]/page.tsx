@@ -427,6 +427,98 @@ export default function BusinessDetail() {
         </div>
       )}
 
+      {/* Fact Check */}
+      {scanComplete && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-3 text-white">Fact Check</h2>
+          {!groundTruth ? (
+            <p className="text-sm text-gray-500">
+              Add business facts below to enable hallucination detection
+            </p>
+          ) : flags.filter((f) => f.flag_type !== "not_mentioned").length ===
+            0 ? (
+            <div className="bg-green-900/30 border border-green-800 rounded-lg p-4">
+              <p className="text-sm text-green-300 font-medium">
+                No hallucinations detected
+              </p>
+              <p className="text-xs text-green-400/70 mt-1">
+                All AI-stated facts match your verified information
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400 mb-3">
+                {flags.filter((f) => f.flag_type === "incorrect").length}{" "}
+                incorrect{" "}
+                {flags.filter((f) => f.flag_type === "incorrect").length === 1
+                  ? "fact"
+                  : "facts"}{" "}
+                found across{" "}
+                {
+                  new Set(
+                    flags
+                      .filter((f) => f.flag_type !== "not_mentioned")
+                      .map((f) => f.query_results?.platform)
+                  ).size
+                }{" "}
+                {new Set(
+                  flags
+                    .filter((f) => f.flag_type !== "not_mentioned")
+                    .map((f) => f.query_results?.platform)
+                ).size === 1
+                  ? "platform"
+                  : "platforms"}
+              </p>
+              <div className="space-y-3">
+                {flags
+                  .filter((f) => f.flag_type !== "not_mentioned")
+                  .map((flag) => (
+                    <div
+                      key={flag.id}
+                      className={`rounded-lg border p-4 ${
+                        flag.flag_type === "incorrect"
+                          ? "border-red-800 bg-red-900/20"
+                          : "border-yellow-800 bg-yellow-900/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-white capitalize">
+                          {flag.field}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          <span className="capitalize">
+                            {flag.query_results?.platform}
+                          </span>
+                          {flag.query_results?.tracking_queries
+                            ?.query_template &&
+                            ` \u00b7 ${flag.query_results.tracking_queries.query_template}`}
+                        </span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p className="text-red-400">
+                          <span className="text-gray-500">AI said:</span>{" "}
+                          {flag.ai_claim || "\u2014"}
+                        </p>
+                        {flag.ground_truth_value && (
+                          <p className="text-green-400">
+                            <span className="text-gray-500">Correct:</span>{" "}
+                            {flag.ground_truth_value}
+                          </p>
+                        )}
+                      </div>
+                      {flag.flag_type === "unverifiable" && (
+                        <p className="text-xs text-yellow-500/70 mt-2">
+                          Could not verify — no ground truth for this field
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Tracking Queries */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-3 text-white">Tracking Queries</h2>
