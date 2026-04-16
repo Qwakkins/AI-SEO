@@ -1,6 +1,7 @@
 import { scanBusiness } from "@/lib/scanner";
 import { checkBusinessAccess } from "@/lib/auth";
 import { aggregateVisibilityScores } from "@/lib/scanner/aggregator";
+import { detectHallucinations } from "@/lib/scanner/hallucination-detector";
 import { getSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
@@ -22,6 +23,12 @@ export async function POST(request: Request) {
     const results = await scanBusiness(business_id);
 
     await aggregateVisibilityScores(business_id, results);
+
+    try {
+      await detectHallucinations(business_id);
+    } catch (err) {
+      console.error("Hallucination detection failed:", err);
+    }
 
     const supabase = getSupabase();
     if (supabase) {

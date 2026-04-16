@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { scanBusiness, type ScanResult } from "@/lib/scanner";
 import { aggregateVisibilityScores } from "@/lib/scanner/aggregator";
+import { detectHallucinations } from "@/lib/scanner/hallucination-detector";
 
 const DELAY_BETWEEN_BUSINESSES_MS = 1500;
 
@@ -62,6 +63,12 @@ export async function GET(request: Request) {
     try {
       const scanResults: ScanResult[] = await scanBusiness(biz.id);
       await aggregateVisibilityScores(biz.id, scanResults);
+
+      try {
+        await detectHallucinations(biz.id);
+      } catch (err) {
+        console.error("Hallucination detection failed for", biz.name, err);
+      }
 
       results.push({
         business_id: biz.id,
