@@ -42,6 +42,40 @@ interface ScanResponse {
   error?: string;
 }
 
+interface GroundTruth {
+  id: string;
+  phone: string | null;
+  address_street: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_zip: string | null;
+  website_url: string | null;
+  services: string[];
+  verified_at: string | null;
+}
+
+interface HallucinationFlag {
+  id: string;
+  field: string;
+  ai_claim: string;
+  ground_truth_value: string | null;
+  flag_type: "incorrect" | "unverifiable" | "not_mentioned";
+  confidence: number;
+  created_at: string;
+  query_results: {
+    platform: string;
+    queried_at: string;
+    tracking_queries: { query_template: string };
+  };
+}
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN",
+  "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV",
+  "NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN",
+  "TX","UT","VT","VA","WA","WV","WI","WY","DC",
+];
+
 export default function BusinessDetail() {
   const { id } = useParams<{ id: string }>();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -53,17 +87,44 @@ export default function BusinessDetail() {
   const [scanError, setScanError] = useState("");
   const [expandedResult, setExpandedResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [groundTruth, setGroundTruth] = useState<GroundTruth | null>(null);
+  const [flags, setFlags] = useState<HallucinationFlag[]>([]);
+  const [savingGT, setSavingGT] = useState(false);
+  const [gtForm, setGtForm] = useState({
+    phone: "",
+    address_street: "",
+    address_city: "",
+    address_state: "",
+    address_zip: "",
+    website_url: "",
+    services: "",
+  });
 
   useEffect(() => {
     if (!id) return;
     Promise.all([
       fetch(`/api/businesses/${id}`).then((r) => r.json()),
       fetch(`/api/results/${id}`).then((r) => r.json()),
-    ]).then(([bizData, resultsData]) => {
+      fetch(`/api/ground-truth/${id}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/hallucinations/${id}`).then((r) => r.json()).catch(() => ({ flags: [] })),
+    ]).then(([bizData, resultsData, gtData, flagsData]) => {
       setBusiness(bizData);
       setResults(resultsData.results || []);
       setSummary(resultsData.summary || []);
       if (resultsData.results?.length > 0) setScanComplete(true);
+      if (gtData && gtData.id) {
+        setGroundTruth(gtData);
+        setGtForm({
+          phone: gtData.phone || "",
+          address_street: gtData.address_street || "",
+          address_city: gtData.address_city || "",
+          address_state: gtData.address_state || "",
+          address_zip: gtData.address_zip || "",
+          website_url: gtData.website_url || "",
+          services: (gtData.services || []).join(", "),
+        });
+      }
+      setFlags(flagsData.flags || []);
       setLoading(false);
     });
   }, [id]);
@@ -96,6 +157,51 @@ export default function BusinessDetail() {
     const refreshed = await fetch(`/api/results/${id}`).then((r) => r.json());
     setResults(refreshed.results || []);
     setSummary(refreshed.summary || []);
+    // Refresh hallucination flags
+    const flagsRefresh = await fetch(`/api/hallucinations/${id}`).then((r) =>
+      r.json()
+    );
+    setFlags(flagsRefresh.flags || []);
+  }
+
+  async function saveGroundTruth() {
+    setSavingGT(true);
+    const body = {
+      phone: gtForm.phone || null,
+      address_street: gtForm.address_street || null,
+      address_city: gtForm.address_city || null,
+      address_state: gtForm.address_state || null,
+      address_zip: gtForm.address_zip || null,
+      website_url: gtForm.website_url || null,
+      services: gtForm.services
+        ? gtForm.services.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+    };
+
+    const res = await fetch(`/api/ground-truth/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setGroundTruth(data);
+    }
+    setSavingGT(false);
+  }
+
+  function timeAgo(dateStr: string): string {
+    const seconds = Math.floor(
+      (Date.now() - new Date(dateStr).getTime()) / 1000
+    );
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }
 
   if (loading) {
@@ -112,14 +218,14 @@ export default function BusinessDetail() {
 
   return (
     <div>
-      <Link href="/" className="text-blue-600 text-sm hover:underline">
+      <Link href="/" className="text-blue-400 text-sm hover:underline">
         &larr; Back to Dashboard
       </Link>
 
       {/* Header */}
       <div className="mt-4 mb-6">
-        <h1 className="text-2xl font-bold">{business.name}</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-white">{business.name}</h1>
+        <p className="text-gray-400">
           {business.category} &middot; {business.location}
         </p>
         {business.website_url && (
@@ -127,7 +233,7 @@ export default function BusinessDetail() {
             href={business.website_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 text-sm hover:underline"
+            className="text-blue-400 text-sm hover:underline"
           >
             {business.website_url}
           </a>
@@ -141,10 +247,8 @@ export default function BusinessDetail() {
           disabled={scanning}
           className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
             scanning
-              ? "bg-blue-400 text-white cursor-not-allowed"
-              : scanComplete
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-blue-600 text-white hover:bg-blue-700"
+              ? "bg-blue-800 text-blue-300 cursor-not-allowed"
+              : "bg-blue-500 text-white hover:bg-blue-600"
           }`}
         >
           {scanning
@@ -156,17 +260,17 @@ export default function BusinessDetail() {
 
         {/* Progress Bar */}
         {scanning && (
-          <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
+          <div className="mt-4 bg-[#161616] border border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
-              <p className="text-sm font-medium text-gray-700">
+              <div className="animate-spin h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full" />
+              <p className="text-sm font-medium text-gray-300">
                 Querying AI platforms...
               </p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div className="bg-blue-600 h-2 rounded-full animate-pulse w-full" />
+            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div className="bg-blue-500 h-2 rounded-full animate-pulse w-full" />
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-gray-500 mt-2">
               Running {business.tracking_queries?.length || 4} queries across AI
               platforms. This usually takes 30-60 seconds.
             </p>
@@ -175,9 +279,9 @@ export default function BusinessDetail() {
 
         {/* Scan Error */}
         {scanError && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-700 font-medium">Scan failed</p>
-            <p className="text-sm text-red-600">{scanError}</p>
+          <div className="mt-4 bg-red-900/30 border border-red-800 rounded-lg p-4">
+            <p className="text-sm text-red-300 font-medium">Scan failed</p>
+            <p className="text-sm text-red-400">{scanError}</p>
           </div>
         )}
 
@@ -187,14 +291,14 @@ export default function BusinessDetail() {
             className={`mt-4 rounded-lg border p-4 ${
               lastScan.mentioned_count > 0
                 ? lastScan.mentioned_count / lastScan.total_queries >= 0.5
-                  ? "bg-green-50 border-green-200"
-                  : "bg-amber-50 border-amber-200"
-                : "bg-red-50 border-red-200"
+                  ? "bg-green-900/30 border-green-800"
+                  : "bg-amber-900/30 border-amber-800"
+                : "bg-red-900/30 border-red-800"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <p className="font-semibold text-gray-800">Scan Complete</p>
-              <span className="text-xs text-gray-400">
+              <p className="font-semibold text-white">Scan Complete</p>
+              <span className="text-xs text-gray-500">
                 {new Date().toLocaleString()}
               </span>
             </div>
@@ -202,28 +306,28 @@ export default function BusinessDetail() {
             {/* Results Bar */}
             <div className="mb-3">
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">
+                <span className="text-gray-300">
                   Mentioned in{" "}
-                  <span className="font-bold">
+                  <span className="font-bold text-white">
                     {lastScan.mentioned_count}/{lastScan.total_queries}
                   </span>{" "}
                   queries
                 </span>
-                <span className="font-bold">
+                <span className="font-bold text-white">
                   {Math.round(
                     (lastScan.mentioned_count / lastScan.total_queries) * 100
                   )}
                   %
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-gray-700 rounded-full h-3">
                 <div
                   className={`h-3 rounded-full transition-all duration-500 ${
                     lastScan.mentioned_count > 0
                       ? lastScan.mentioned_count / lastScan.total_queries >= 0.5
                         ? "bg-green-500"
                         : "bg-amber-500"
-                      : "bg-red-400"
+                      : "bg-red-500"
                   }`}
                   style={{
                     width: `${Math.max(
@@ -254,8 +358,8 @@ export default function BusinessDetail() {
                     key={platform}
                     className={`text-xs px-3 py-1 rounded-full font-medium capitalize ${
                       stats.mentioned > 0
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-700"
+                        ? "bg-green-900/50 text-green-300"
+                        : "bg-red-900/50 text-red-300"
                     }`}
                   >
                     {platform}: {stats.mentioned}/{stats.total}
@@ -265,7 +369,7 @@ export default function BusinessDetail() {
             </div>
 
             {lastScan.mentioned_count === 0 && (
-              <p className="text-sm text-gray-600 mt-3">
+              <p className="text-sm text-gray-400 mt-3">
                 Your business was not found in any AI responses. This is your
                 baseline — optimizing your schema, reviews, and content can
                 improve this.
@@ -278,30 +382,30 @@ export default function BusinessDetail() {
       {/* Platform Summary */}
       {summary.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-3">AI Visibility Summary</h2>
+          <h2 className="text-lg font-semibold mb-3 text-white">AI Visibility Summary</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {summary.map((s) => {
               const rate = Math.round(s.mention_rate * 100);
               return (
                 <div
                   key={s.platform}
-                  className="bg-white border border-gray-200 rounded-lg p-4"
+                  className="bg-[#161616] border border-gray-700 rounded-lg p-4"
                 >
-                  <p className="text-sm text-gray-500 capitalize">
+                  <p className="text-sm text-gray-400 capitalize">
                     {s.platform}
                   </p>
                   <p
                     className={`text-2xl font-bold ${
                       rate > 50
-                        ? "text-green-600"
+                        ? "text-green-400"
                         : rate > 0
-                          ? "text-amber-600"
-                          : "text-red-500"
+                          ? "text-amber-400"
+                          : "text-red-400"
                     }`}
                   >
                     {rate}%
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-500">
                     {s.mentioned}/{s.total} queries
                   </p>
                   {rate === 0 && (
@@ -310,12 +414,12 @@ export default function BusinessDetail() {
                 </div>
               );
             })}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-600 font-medium">Overall</p>
-              <p className="text-2xl font-bold text-blue-700">
+            <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-400 font-medium">Overall</p>
+              <p className="text-2xl font-bold text-blue-300">
                 {Math.round(overallRate * 100)}%
               </p>
-              <p className="text-xs text-blue-400">
+              <p className="text-xs text-blue-500">
                 {overallMentioned}/{overallTotal} total
               </p>
             </div>
@@ -325,15 +429,15 @@ export default function BusinessDetail() {
 
       {/* Tracking Queries */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Tracking Queries</h2>
+        <h2 className="text-lg font-semibold mb-3 text-white">Tracking Queries</h2>
         <div className="flex flex-wrap gap-2">
           {business.tracking_queries?.map((q) => (
             <span
               key={q.id}
               className={`text-sm px-3 py-1 rounded-full ${
                 q.is_active
-                  ? "bg-green-100 text-green-800"
-                  : "bg-gray-100 text-gray-500"
+                  ? "bg-green-900/50 text-green-300"
+                  : "bg-gray-800 text-gray-500"
               }`}
             >
               {q.query_template}
@@ -342,52 +446,195 @@ export default function BusinessDetail() {
         </div>
       </div>
 
+      {/* Business Facts (Ground Truth) */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-1 text-white">
+          Business Facts
+        </h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Enter verified information to detect AI hallucinations
+        </p>
+        <div className="bg-[#161616] border border-gray-700 rounded-lg p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-300">
+              Phone
+            </label>
+            <input
+              type="text"
+              value={gtForm.phone}
+              onChange={(e) =>
+                setGtForm((prev) => ({ ...prev, phone: e.target.value }))
+              }
+              placeholder="(619) 226-6333"
+              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-300">
+              Address
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text"
+                value={gtForm.address_street}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    address_street: e.target.value,
+                  }))
+                }
+                placeholder="1815 Newton Ave"
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <input
+                type="text"
+                value={gtForm.address_city}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    address_city: e.target.value,
+                  }))
+                }
+                placeholder="San Diego"
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <select
+                value={gtForm.address_state}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    address_state: e.target.value,
+                  }))
+                }
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">State</option>
+                {US_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={gtForm.address_zip}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    address_zip: e.target.value,
+                  }))
+                }
+                placeholder="92113"
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-300">
+              Website
+            </label>
+            <input
+              type="text"
+              value={gtForm.website_url}
+              onChange={(e) =>
+                setGtForm((prev) => ({
+                  ...prev,
+                  website_url: e.target.value,
+                }))
+              }
+              placeholder="philsbbq.net"
+              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-300">
+              Services
+            </label>
+            <input
+              type="text"
+              value={gtForm.services}
+              onChange={(e) =>
+                setGtForm((prev) => ({
+                  ...prev,
+                  services: e.target.value,
+                }))
+              }
+              placeholder="BBQ, catering, dine-in"
+              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Separate services with commas
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={saveGroundTruth}
+              disabled={savingGT}
+              className="bg-blue-500 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              {savingGT ? "Saving..." : "Save Facts"}
+            </button>
+            {groundTruth?.verified_at && (
+              <span className="text-xs text-gray-500">
+                Last verified: {timeAgo(groundTruth.verified_at)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Results Table */}
       {results.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">Scan Results</h2>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <h2 className="text-lg font-semibold mb-3 text-white">Scan Results</h2>
+          <div className="bg-[#161616] border border-gray-700 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-[#1a1a1a] border-b border-gray-700">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Query</th>
-                  <th className="text-left px-4 py-3 font-medium">Platform</th>
-                  <th className="text-left px-4 py-3 font-medium">Mentioned</th>
-                  <th className="text-left px-4 py-3 font-medium">
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">Query</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">Platform</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">Mentioned</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">
                     Competitors
                   </th>
-                  <th className="text-left px-4 py-3 font-medium">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r) => (
                   <Fragment key={r.id}>
                     <tr
-                      className="border-b border-gray-100 cursor-pointer hover:bg-gray-50"
+                      className="border-b border-gray-800 cursor-pointer hover:bg-[#1e1e1e]"
                       onClick={() =>
                         setExpandedResult(
                           expandedResult === r.id ? null : r.id
                         )
                       }
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-gray-200">
                         {r.tracking_queries?.query_template}
                       </td>
-                      <td className="px-4 py-3 capitalize">{r.platform}</td>
+                      <td className="px-4 py-3 capitalize text-gray-300">{r.platform}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block w-2 h-2 rounded-full mr-2 ${
                             r.business_mentioned
                               ? "bg-green-500"
-                              : "bg-red-400"
+                              : "bg-red-500"
                           }`}
                         />
-                        {r.business_mentioned ? "Yes" : "No"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {r.competitors_mentioned?.length || 0} found
+                        <span className={r.business_mentioned ? "text-green-400" : "text-red-400"}>
+                          {r.business_mentioned ? "Yes" : "No"}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400">
+                        {r.competitors_mentioned?.length || 0} found
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
                         {new Date(r.queried_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -395,28 +642,28 @@ export default function BusinessDetail() {
                       <tr>
                         <td
                           colSpan={5}
-                          className="px-4 py-4 bg-gray-50 text-xs"
+                          className="px-4 py-4 bg-[#111111] text-xs"
                         >
                           {r.mention_context && (
                             <div className="mb-3">
-                              <p className="font-medium text-green-700 mb-1">
+                              <p className="font-medium text-green-400 mb-1">
                                 Mention context:
                               </p>
-                              <p className="text-gray-700">
+                              <p className="text-gray-300">
                                 {r.mention_context}
                               </p>
                             </div>
                           )}
                           {r.competitors_mentioned?.length > 0 && (
                             <div className="mb-3">
-                              <p className="font-medium mb-1">
+                              <p className="font-medium text-gray-300 mb-1">
                                 Competitors mentioned:
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {r.competitors_mentioned.map((c, i) => (
                                   <span
                                     key={i}
-                                    className="bg-gray-200 px-2 py-0.5 rounded text-gray-700"
+                                    className="bg-gray-800 px-2 py-0.5 rounded text-gray-300"
                                   >
                                     {c}
                                   </span>
@@ -425,10 +672,10 @@ export default function BusinessDetail() {
                             </div>
                           )}
                           <details>
-                            <summary className="cursor-pointer text-blue-600 hover:underline">
+                            <summary className="cursor-pointer text-blue-400 hover:underline">
                               View full AI response
                             </summary>
-                            <pre className="mt-2 whitespace-pre-wrap text-gray-600 max-h-64 overflow-y-auto">
+                            <pre className="mt-2 whitespace-pre-wrap text-gray-400 max-h-64 overflow-y-auto">
                               {r.response_text}
                             </pre>
                           </details>
@@ -444,7 +691,7 @@ export default function BusinessDetail() {
       )}
 
       {results.length === 0 && !scanning && !scanComplete && (
-        <p className="text-gray-400 text-center py-8">
+        <p className="text-gray-500 text-center py-8">
           No scan results yet. Click &quot;Run Scan&quot; to check AI
           visibility.
         </p>
