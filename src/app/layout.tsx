@@ -31,16 +31,16 @@ export default function RootLayout({
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
-        <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
-          <header className="bg-white border-b border-gray-200">
+        <body className="min-h-full flex flex-col bg-[#0a0a0a] text-gray-100">
+          <header className="bg-[#111111] border-b border-gray-800">
             <nav className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold">
+              <Link href="/" className="text-xl font-bold text-white">
                 GEO Tracker
               </Link>
               <div className="flex items-center gap-4">
                 <Link
                   href="/add"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
                 >
                   + Add Business
                 </Link>

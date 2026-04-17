@@ -44,11 +44,11 @@ export default function AddBusiness() {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Add a Business</h1>
+      <h1 className="text-2xl font-bold mb-6 text-white">Add a Business</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">
+          <label htmlFor="name" className="block text-sm font-medium mb-1 text-gray-300">
             Business Name
           </label>
           <input
@@ -57,12 +57,12 @@ export default function AddBusiness() {
             type="text"
             required
             placeholder="Joe's Donuts"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-[#161616] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
         <div>
-          <label htmlFor="location" className="block text-sm font-medium mb-1">
+          <label htmlFor="location" className="block text-sm font-medium mb-1 text-gray-300">
             Location
           </label>
           <input
@@ -71,12 +71,12 @@ export default function AddBusiness() {
             type="text"
             required
             placeholder="San Diego, CA"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-[#161616] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
         <div>
-          <label htmlFor="category" className="block text-sm font-medium mb-1">
+          <label htmlFor="category" className="block text-sm font-medium mb-1 text-gray-300">
             Category
           </label>
           <input
@@ -85,9 +85,9 @@ export default function AddBusiness() {
             type="text"
             required
             placeholder="donut shop"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-[#161616] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             How someone would search for this type of business
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function AddBusiness() {
         <div>
           <label
             htmlFor="website_url"
-            className="block text-sm font-medium mb-1"
+            className="block text-sm font-medium mb-1 text-gray-300"
           >
             Website URL (optional)
           </label>
@@ -104,25 +104,25 @@ export default function AddBusiness() {
             name="website_url"
             type="text"
             placeholder="joesdonuts.com"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-[#161616] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-red-400 text-sm">{error}</p>
         )}
 
         <div className="pt-2">
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full bg-blue-500 text-white py-2.5 rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
             {submitting ? "Adding..." : "Add Business"}
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-gray-500 text-center">
           Default tracking queries will be auto-generated based on the category
           and location.
         </p>
