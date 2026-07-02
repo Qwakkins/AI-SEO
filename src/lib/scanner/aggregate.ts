@@ -56,7 +56,8 @@ export async function saveVisibilityScores(
     .delete()
     .eq("business_id", businessId)
     .eq("period_start", today);
-  if (deleteError) throw new Error(deleteError.message);
+  if (deleteError)
+    throw new Error(`${deleteError.code}: ${deleteError.message}`);
 
   const rows = scores.map((s) => ({
     business_id: businessId,
@@ -70,5 +71,5 @@ export async function saveVisibilityScores(
   }));
 
   const { error } = await supabase.from("visibility_scores").insert(rows);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(`${error.code}: ${error.message}`);
 }
