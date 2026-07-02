@@ -1,3 +1,5 @@
+import { getSupabase } from "@/lib/supabase";
+
 export interface ResultRow {
   platform: string;
   business_mentioned: boolean;
@@ -36,4 +38,37 @@ export function computeVisibilityScores(results: ResultRow[]): PlatformScore[] {
           : null,
     };
   });
+}
+
+export async function saveVisibilityScores(
+  businessId: string,
+  scores: PlatformScore[]
+): Promise<void> {
+  if (scores.length === 0) return;
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Database not configured");
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Re-scanning the same day replaces that day's rows instead of duplicating them
+  const { error: deleteError } = await supabase
+    .from("visibility_scores")
+    .delete()
+    .eq("business_id", businessId)
+    .eq("period_start", today);
+  if (deleteError) throw new Error(deleteError.message);
+
+  const rows = scores.map((s) => ({
+    business_id: businessId,
+    platform: s.platform,
+    period_start: today,
+    period_end: today,
+    total_queries: s.total_queries,
+    times_mentioned: s.times_mentioned,
+    mention_rate: s.mention_rate,
+    avg_position: s.avg_position,
+  }));
+
+  const { error } = await supabase.from("visibility_scores").insert(rows);
+  if (error) throw new Error(error.message);
 }
