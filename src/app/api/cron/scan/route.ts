@@ -32,6 +32,7 @@ export async function GET(request: Request) {
   for (const biz of businesses ?? []) {
     try {
       const results = await scanBusiness(biz.id);
+      if (results.length === 0) throw new Error("No scan results returned");
       const scores = computeVisibilityScores(results);
       await saveVisibilityScores(biz.id, scores);
       scanned++;
