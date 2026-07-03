@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { requireAuth, getAccessibleBusinessIds } from "@/lib/auth";
 
 export async function GET() {
   const supabase = getSupabase();
@@ -6,10 +7,17 @@ export async function GET() {
     return Response.json({ error: "Database not configured" }, { status: 500 });
   }
 
+  const accessibleIds = await getAccessibleBusinessIds();
+
   const { data, error } = await supabase
     .from("businesses")
     .select("*, visibility_scores(*)")
-    .order("created_at", { ascending: false });
+    .in("id", accessibleIds)
+    .order("created_at", { ascending: false })
+    .order("period_start", {
+      referencedTable: "visibility_scores",
+      ascending: false,
+    });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -22,6 +30,11 @@ export async function POST(request: Request) {
   const supabase = getSupabase();
   if (!supabase) {
     return Response.json({ error: "Database not configured" }, { status: 500 });
+  }
+
+  const { isAdmin } = await requireAuth();
+  if (!isAdmin) {
+    return Response.json({ error: "Forbidden — admin only" }, { status: 403 });
   }
 
   const body = await request.json();

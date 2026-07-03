@@ -32,19 +32,19 @@ export default function Dashboard() {
   }, []);
 
   if (loading) {
-    return <p className="text-gray-500">Loading businesses...</p>;
+    return <p className="text-gray-400">Loading businesses...</p>;
   }
 
   if (businesses.length === 0) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-2xl font-semibold mb-2">No businesses tracked yet</h2>
-        <p className="text-gray-500 mb-6">
+        <h2 className="text-2xl font-semibold mb-2 text-white">No businesses tracked yet</h2>
+        <p className="text-gray-400 mb-6">
           Add a business to start tracking its AI visibility.
         </p>
         <Link
           href="/add"
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors"
         >
           + Add Your First Business
         </Link>
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-white">Dashboard</h1>
       <div className="grid gap-4 sm:grid-cols-2">
         {businesses.map((biz) => {
           const scores = biz.visibility_scores || [];
@@ -76,22 +76,22 @@ export default function Dashboard() {
             <Link
               key={biz.id}
               href={`/business/${biz.id}`}
-              className="block bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              className="block bg-[#161616] rounded-lg border border-gray-700 p-5 hover:border-gray-500 transition-colors"
             >
-              <h3 className="font-semibold text-lg">{biz.name}</h3>
-              <p className="text-sm text-gray-500 mb-3">
+              <h3 className="font-semibold text-lg text-white">{biz.name}</h3>
+              <p className="text-sm text-gray-400 mb-3">
                 {biz.category} &middot; {biz.location}
               </p>
 
               {overallRate !== null ? (
-                <p className="text-2xl font-bold text-blue-600 mb-3">
+                <p className="text-2xl font-bold text-blue-400 mb-3">
                   {Math.round(overallRate * 100)}%
                   <span className="text-sm font-normal text-gray-500 ml-1">
                     mention rate
                   </span>
                 </p>
               ) : (
-                <p className="text-sm text-gray-400 mb-3">No scans yet</p>
+                <p className="text-sm text-gray-500 mb-3">No scans yet</p>
               )}
 
               <div className="flex gap-2">
@@ -99,12 +99,12 @@ export default function Dashboard() {
                   const rate = latestByPlatform.get(p);
                   const color =
                     rate === undefined
-                      ? "bg-gray-200"
+                      ? "bg-gray-700 text-gray-400"
                       : rate >= 0.5
-                        ? "bg-green-400"
+                        ? "bg-green-900 text-green-300"
                         : rate >= 0.2
-                          ? "bg-yellow-400"
-                          : "bg-red-400";
+                          ? "bg-yellow-900 text-yellow-300"
+                          : "bg-red-900 text-red-300";
                   return (
                     <span
                       key={p}
