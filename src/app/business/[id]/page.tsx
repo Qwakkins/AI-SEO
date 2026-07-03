@@ -205,6 +205,7 @@ export default function BusinessDetail() {
 
   function timeAgo(dateStr: string): string {
     const seconds = Math.floor(
+      // eslint-disable-next-line react-hooks/purity -- relative timestamps are inherently time-dependent
       (Date.now() - new Date(dateStr).getTime()) / 1000
     );
     if (seconds < 60) return "just now";
