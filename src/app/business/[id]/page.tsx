@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import TrendChart, { VisibilityScore } from "@/components/TrendChart";
 
 interface Business {
   id: string;
@@ -11,6 +12,7 @@ interface Business {
   category: string;
   website_url: string | null;
   tracking_queries: { id: string; query_template: string; is_active: boolean }[];
+  visibility_scores: VisibilityScore[];
 }
 
 interface QueryResult {
@@ -163,6 +165,11 @@ export default function BusinessDetail() {
       r.json()
     );
     setFlags(flagsRefresh.flags || []);
+    // Refresh visibility scores so the trend chart picks up today's point
+    const refreshedBiz = await fetch(`/api/businesses/${id}`).then((r) =>
+      r.json()
+    );
+    setBusiness(refreshedBiz);
   }
 
   async function saveGroundTruth() {
@@ -382,6 +389,14 @@ export default function BusinessDetail() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Visibility Trend */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-3 text-white">
+          Visibility Trend
+        </h2>
+        <TrendChart scores={business.visibility_scores ?? []} />
       </div>
 
       {/* Platform Summary */}

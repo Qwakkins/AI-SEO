@@ -1,11 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let client: Anthropic | null = null;
+
+function getClient(): Anthropic {
+  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return client;
+}
 
 export async function queryClaude(prompt: string): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await getClient().messages.create({
+    model: "claude-sonnet-5",
     max_tokens: 1024,
+    // Sonnet 5 defaults to adaptive thinking, which would consume the small
+    // max_tokens budget; scans only need the plain answer text
+    thinking: { type: "disabled" },
     messages: [{ role: "user", content: prompt }],
   });
 
