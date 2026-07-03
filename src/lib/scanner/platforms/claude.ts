@@ -9,8 +9,11 @@ function getClient(): Anthropic {
 
 export async function queryClaude(prompt: string): Promise<string> {
   const response = await getClient().messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-5",
     max_tokens: 1024,
+    // Sonnet 5 defaults to adaptive thinking, which would consume the small
+    // max_tokens budget; scans only need the plain answer text
+    thinking: { type: "disabled" },
     messages: [{ role: "user", content: prompt }],
   });
 
