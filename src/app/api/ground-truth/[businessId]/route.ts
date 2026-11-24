@@ -1,16 +1,11 @@
 import { getSupabase } from "@/lib/supabase";
-import { checkBusinessAccess } from "@/lib/auth";
+import { readOnlyResponse, writesEnabled } from "@/lib/access";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ businessId: string }> }
+  { params }: { params: Promise<{ businessId: string }> },
 ) {
   const { businessId } = await params;
-
-  const access = await checkBusinessAccess(businessId);
-  if (!access) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const supabase = getSupabase();
   if (!supabase) {
@@ -28,14 +23,11 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ businessId: string }> }
+  { params }: { params: Promise<{ businessId: string }> },
 ) {
   const { businessId } = await params;
 
-  const access = await checkBusinessAccess(businessId, "editor");
-  if (!access) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (!writesEnabled()) return readOnlyResponse();
 
   const supabase = getSupabase();
   if (!supabase) {
@@ -59,7 +51,7 @@ export async function POST(
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "business_id" }
+      { onConflict: "business_id" },
     )
     .select()
     .single();

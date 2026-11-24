@@ -1,20 +1,17 @@
 import { scanBusiness } from "@/lib/scanner";
-import { checkBusinessAccess } from "@/lib/auth";
+import { readOnlyResponse, writesEnabled } from "@/lib/access";
 import { aggregateVisibilityScores } from "@/lib/scanner/aggregator";
 import { detectHallucinations } from "@/lib/scanner/hallucination-detector";
 import { getSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
+  if (!writesEnabled()) return readOnlyResponse();
+
   const body = await request.json();
   const { business_id } = body;
 
   if (!business_id) {
     return Response.json({ error: "business_id is required" }, { status: 400 });
-  }
-
-  const access = await checkBusinessAccess(business_id, "editor");
-  if (!access) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const startTime = Date.now();

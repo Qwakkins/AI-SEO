@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import TrendChart, { VisibilityScore } from "@/components/TrendChart";
+import { writesEnabled } from "@/lib/access";
 
 interface Business {
   id: string;
@@ -11,7 +12,11 @@ interface Business {
   location: string;
   category: string;
   website_url: string | null;
-  tracking_queries: { id: string; query_template: string; is_active: boolean }[];
+  tracking_queries: {
+    id: string;
+    query_template: string;
+    is_active: boolean;
+  }[];
   visibility_scores: VisibilityScore[];
 }
 
@@ -72,10 +77,57 @@ interface HallucinationFlag {
 }
 
 const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN",
-  "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV",
-  "NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN",
-  "TX","UT","VT","VA","WA","WV","WI","WY","DC",
+  "AL",
+  "AK",
+  "AZ",
+  "AR",
+  "CA",
+  "CO",
+  "CT",
+  "DE",
+  "FL",
+  "GA",
+  "HI",
+  "ID",
+  "IL",
+  "IN",
+  "IA",
+  "KS",
+  "KY",
+  "LA",
+  "ME",
+  "MD",
+  "MA",
+  "MI",
+  "MN",
+  "MS",
+  "MO",
+  "MT",
+  "NE",
+  "NV",
+  "NH",
+  "NJ",
+  "NM",
+  "NY",
+  "NC",
+  "ND",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VT",
+  "VA",
+  "WA",
+  "WV",
+  "WI",
+  "WY",
+  "DC",
 ];
 
 export default function BusinessDetail() {
@@ -108,8 +160,12 @@ export default function BusinessDetail() {
     Promise.all([
       fetch(`/api/businesses/${id}`).then((r) => r.json()),
       fetch(`/api/results/${id}`).then((r) => r.json()),
-      fetch(`/api/ground-truth/${id}`).then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/hallucinations/${id}`).then((r) => r.json()).catch(() => ({ flags: [] })),
+      fetch(`/api/ground-truth/${id}`)
+        .then((r) => r.json())
+        .catch(() => ({})),
+      fetch(`/api/hallucinations/${id}`)
+        .then((r) => r.json())
+        .catch(() => ({ flags: [] })),
     ]).then(([bizData, resultsData, gtData, flagsData]) => {
       setBusiness(bizData);
       setResults(resultsData.results || []);
@@ -162,12 +218,12 @@ export default function BusinessDetail() {
     setSummary(refreshed.summary || []);
     // Refresh hallucination flags
     const flagsRefresh = await fetch(`/api/hallucinations/${id}`).then((r) =>
-      r.json()
+      r.json(),
     );
     setFlags(flagsRefresh.flags || []);
     // Refresh visibility scores so the trend chart picks up today's point
     const refreshedBiz = await fetch(`/api/businesses/${id}`).then((r) =>
-      r.json()
+      r.json(),
     );
     setBusiness(refreshedBiz);
   }
@@ -183,7 +239,10 @@ export default function BusinessDetail() {
       address_zip: gtForm.address_zip || null,
       website_url: gtForm.website_url || null,
       services: gtForm.services
-        ? gtForm.services.split(",").map((s) => s.trim()).filter(Boolean)
+        ? gtForm.services
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
         : [],
     };
 
@@ -206,7 +265,7 @@ export default function BusinessDetail() {
   function timeAgo(dateStr: string): string {
     const seconds = Math.floor(
       // eslint-disable-next-line react-hooks/purity -- relative timestamps are inherently time-dependent
-      (Date.now() - new Date(dateStr).getTime()) / 1000
+      (Date.now() - new Date(dateStr).getTime()) / 1000,
     );
     if (seconds < 60) return "just now";
     const minutes = Math.floor(seconds / 60);
@@ -231,7 +290,7 @@ export default function BusinessDetail() {
 
   return (
     <div>
-      <Link href="/" className="text-blue-400 text-sm hover:underline">
+      <Link href="/dashboard" className="text-blue-400 text-sm hover:underline">
         &larr; Back to Dashboard
       </Link>
 
@@ -255,21 +314,28 @@ export default function BusinessDetail() {
 
       {/* Scan Button + Progress */}
       <div className="mb-6">
-        <button
-          onClick={runScan}
-          disabled={scanning}
-          className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
-            scanning
-              ? "bg-blue-800 text-blue-300 cursor-not-allowed"
-              : "bg-blue-500 text-white hover:bg-blue-600"
-          }`}
-        >
-          {scanning
-            ? "Scanning..."
-            : scanComplete
-              ? "Scan Again"
-              : "Run Scan"}
-        </button>
+        {writesEnabled() ? (
+          <button
+            onClick={runScan}
+            disabled={scanning}
+            className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
+              scanning
+                ? "bg-blue-800 text-blue-300 cursor-not-allowed"
+                : "bg-blue-500 text-white hover:bg-blue-600"
+            }`}
+          >
+            {scanning
+              ? "Scanning..."
+              : scanComplete
+                ? "Scan Again"
+                : "Run Scan"}
+          </button>
+        ) : (
+          <p className="text-sm text-gray-400">
+            Read-only demo. Every business is rescanned automatically each
+            Monday.
+          </p>
+        )}
 
         {/* Progress Bar */}
         {scanning && (
@@ -328,7 +394,7 @@ export default function BusinessDetail() {
                 </span>
                 <span className="font-bold text-white">
                   {Math.round(
-                    (lastScan.mentioned_count / lastScan.total_queries) * 100
+                    (lastScan.mentioned_count / lastScan.total_queries) * 100,
                   )}
                   %
                 </span>
@@ -345,7 +411,7 @@ export default function BusinessDetail() {
                   style={{
                     width: `${Math.max(
                       (lastScan.mentioned_count / lastScan.total_queries) * 100,
-                      lastScan.mentioned_count > 0 ? 5 : 0
+                      lastScan.mentioned_count > 0 ? 5 : 0,
                     )}%`,
                   }}
                 />
@@ -363,8 +429,7 @@ export default function BusinessDetail() {
                   if (!platforms[r.platform])
                     platforms[r.platform] = { total: 0, mentioned: 0 };
                   platforms[r.platform].total++;
-                  if (r.business_mentioned)
-                    platforms[r.platform].mentioned++;
+                  if (r.business_mentioned) platforms[r.platform].mentioned++;
                 }
                 return Object.entries(platforms).map(([platform, stats]) => (
                   <span
@@ -403,7 +468,9 @@ export default function BusinessDetail() {
       {/* Platform Summary */}
       {summary.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-3 text-white">AI Visibility Summary</h2>
+          <h2 className="text-lg font-semibold mb-3 text-white">
+            AI Visibility Summary
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {summary.map((s) => {
               const rate = Math.round(s.mention_rate * 100);
@@ -479,13 +546,13 @@ export default function BusinessDetail() {
                   new Set(
                     flags
                       .filter((f) => f.flag_type !== "not_mentioned")
-                      .map((f) => f.query_results?.platform)
+                      .map((f) => f.query_results?.platform),
                   ).size
                 }{" "}
                 {new Set(
                   flags
                     .filter((f) => f.flag_type !== "not_mentioned")
-                    .map((f) => f.query_results?.platform)
+                    .map((f) => f.query_results?.platform),
                 ).size === 1
                   ? "platform"
                   : "platforms"}
@@ -542,7 +609,9 @@ export default function BusinessDetail() {
 
       {/* Tracking Queries */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-3 text-white">Tracking Queries</h2>
+        <h2 className="text-lg font-semibold mb-3 text-white">
+          Tracking Queries
+        </h2>
         <div className="flex flex-wrap gap-2">
           {business.tracking_queries?.map((q) => (
             <span
@@ -565,160 +634,207 @@ export default function BusinessDetail() {
           Business Facts
         </h2>
         <p className="text-sm text-gray-500 mb-3">
-          Enter verified information to detect AI hallucinations
+          Verified details that AI answers are checked against
         </p>
-        <div className="bg-[#161616] border border-gray-700 rounded-lg p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-300">
-              Phone
-            </label>
-            <input
-              type="text"
-              value={gtForm.phone}
-              onChange={(e) =>
-                setGtForm((prev) => ({ ...prev, phone: e.target.value }))
-              }
-              placeholder="(619) 226-6333"
-              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-300">
-              Address
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {writesEnabled() ? (
+          <div className="bg-[#161616] border border-gray-700 rounded-lg p-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300">
+                Phone
+              </label>
               <input
                 type="text"
-                value={gtForm.address_street}
+                value={gtForm.phone}
                 onChange={(e) =>
-                  setGtForm((prev) => ({
-                    ...prev,
-                    address_street: e.target.value,
-                  }))
+                  setGtForm((prev) => ({ ...prev, phone: e.target.value }))
                 }
-                placeholder="1815 Newton Ave"
-                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="text"
-                value={gtForm.address_city}
-                onChange={(e) =>
-                  setGtForm((prev) => ({
-                    ...prev,
-                    address_city: e.target.value,
-                  }))
-                }
-                placeholder="San Diego"
-                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <select
-                value={gtForm.address_state}
-                onChange={(e) =>
-                  setGtForm((prev) => ({
-                    ...prev,
-                    address_state: e.target.value,
-                  }))
-                }
-                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">State</option>
-                {US_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={gtForm.address_zip}
-                onChange={(e) =>
-                  setGtForm((prev) => ({
-                    ...prev,
-                    address_zip: e.target.value,
-                  }))
-                }
-                placeholder="92113"
+                placeholder="(619) 226-6333"
                 className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300">
+                Address
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={gtForm.address_street}
+                  onChange={(e) =>
+                    setGtForm((prev) => ({
+                      ...prev,
+                      address_street: e.target.value,
+                    }))
+                  }
+                  placeholder="1815 Newton Ave"
+                  className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  value={gtForm.address_city}
+                  onChange={(e) =>
+                    setGtForm((prev) => ({
+                      ...prev,
+                      address_city: e.target.value,
+                    }))
+                  }
+                  placeholder="San Diego"
+                  className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <select
+                  value={gtForm.address_state}
+                  onChange={(e) =>
+                    setGtForm((prev) => ({
+                      ...prev,
+                      address_state: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">State</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={gtForm.address_zip}
+                  onChange={(e) =>
+                    setGtForm((prev) => ({
+                      ...prev,
+                      address_zip: e.target.value,
+                    }))
+                  }
+                  placeholder="92113"
+                  className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300">
+                Website
+              </label>
+              <input
+                type="text"
+                value={gtForm.website_url}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    website_url: e.target.value,
+                  }))
+                }
+                placeholder="philsbbq.net"
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-300">
+                Services
+              </label>
+              <input
+                type="text"
+                value={gtForm.services}
+                onChange={(e) =>
+                  setGtForm((prev) => ({
+                    ...prev,
+                    services: e.target.value,
+                  }))
+                }
+                placeholder="BBQ, catering, dine-in"
+                className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Separate services with commas
+              </p>
+            </div>
+
+            {gtError && <p className="text-red-400 text-sm">{gtError}</p>}
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={saveGroundTruth}
+                disabled={savingGT}
+                className="bg-blue-500 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                {savingGT ? "Saving..." : "Save Facts"}
+              </button>
+              {groundTruth?.verified_at && (
+                <span className="text-xs text-gray-500">
+                  Last verified: {timeAgo(groundTruth.verified_at)}
+                </span>
+              )}
+            </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-300">
-              Website
-            </label>
-            <input
-              type="text"
-              value={gtForm.website_url}
-              onChange={(e) =>
-                setGtForm((prev) => ({
-                  ...prev,
-                  website_url: e.target.value,
-                }))
-              }
-              placeholder="philsbbq.net"
-              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-300">
-              Services
-            </label>
-            <input
-              type="text"
-              value={gtForm.services}
-              onChange={(e) =>
-                setGtForm((prev) => ({
-                  ...prev,
-                  services: e.target.value,
-                }))
-              }
-              placeholder="BBQ, catering, dine-in"
-              className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Separate services with commas
-            </p>
-          </div>
-
-          {gtError && (
-            <p className="text-red-400 text-sm">{gtError}</p>
-          )}
-
-          <div className="flex items-center justify-between pt-2">
-            <button
-              onClick={saveGroundTruth}
-              disabled={savingGT}
-              className="bg-blue-500 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
-            >
-              {savingGT ? "Saving..." : "Save Facts"}
-            </button>
+        ) : (
+          <div className="bg-[#161616] border border-gray-700 rounded-lg p-5">
+            {groundTruth?.verified_at ? (
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                {[
+                  ["Phone", groundTruth.phone],
+                  [
+                    "Address",
+                    [
+                      groundTruth.address_street,
+                      groundTruth.address_city,
+                      groundTruth.address_state,
+                      groundTruth.address_zip,
+                    ]
+                      .filter(Boolean)
+                      .join(", "),
+                  ],
+                  ["Website", groundTruth.website_url],
+                  ["Services", (groundTruth.services || []).join(", ")],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-gray-500">{label}</dt>
+                    <dd className="text-gray-200">{value || "Not set"}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No verified facts recorded yet.
+              </p>
+            )}
             {groundTruth?.verified_at && (
-              <span className="text-xs text-gray-500">
+              <p className="mt-4 text-xs text-gray-500">
                 Last verified: {timeAgo(groundTruth.verified_at)}
-              </span>
+              </p>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Results Table */}
       {results.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3 text-white">Scan Results</h2>
+          <h2 className="text-lg font-semibold mb-3 text-white">
+            Scan Results
+          </h2>
           <div className="bg-[#161616] border border-gray-700 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-[#1a1a1a] border-b border-gray-700">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-300">Query</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-300">Platform</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-300">Mentioned</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">
+                    Query
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">
+                    Platform
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">
+                    Mentioned
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-300">
                     Competitors
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-300">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-300">
+                    Date
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -727,24 +843,28 @@ export default function BusinessDetail() {
                     <tr
                       className="border-b border-gray-800 cursor-pointer hover:bg-[#1e1e1e]"
                       onClick={() =>
-                        setExpandedResult(
-                          expandedResult === r.id ? null : r.id
-                        )
+                        setExpandedResult(expandedResult === r.id ? null : r.id)
                       }
                     >
                       <td className="px-4 py-3 text-gray-200">
                         {r.tracking_queries?.query_template}
                       </td>
-                      <td className="px-4 py-3 capitalize text-gray-300">{r.platform}</td>
+                      <td className="px-4 py-3 capitalize text-gray-300">
+                        {r.platform}
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                            r.business_mentioned
-                              ? "bg-green-500"
-                              : "bg-red-500"
+                            r.business_mentioned ? "bg-green-500" : "bg-red-500"
                           }`}
                         />
-                        <span className={r.business_mentioned ? "text-green-400" : "text-red-400"}>
+                        <span
+                          className={
+                            r.business_mentioned
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }
+                        >
                           {r.business_mentioned ? "Yes" : "No"}
                         </span>
                       </td>
