@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, Show } from "@clerk/nextjs";
 import Link from "next/link";
 import { HeaderUserButton } from "@/components/user-button";
 import "./globals.css";
@@ -17,7 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "GEO Tracker",
-  description: "Track your business visibility across AI platforms",
+  description:
+    "See how ChatGPT, Claude, Gemini and Perplexity talk about a local business, and catch the facts they get wrong.",
 };
 
 export default function RootLayout({
@@ -26,7 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider afterSignOutUrl="/sign-in">
+    <ClerkProvider
+      afterSignOutUrl="/"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
@@ -38,13 +43,31 @@ export default function RootLayout({
                 GEO Tracker
               </Link>
               <div className="flex items-center gap-4">
-                <Link
-                  href="/add"
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                <Show
+                  when="signed-in"
+                  fallback={
+                    <Link
+                      href="/sign-in"
+                      className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                  }
                 >
-                  + Add Business
-                </Link>
-                <HeaderUserButton />
+                  <Link
+                    href="/dashboard"
+                    className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/add"
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                  >
+                    + Add Business
+                  </Link>
+                  <HeaderUserButton />
+                </Show>
               </div>
             </nav>
           </header>

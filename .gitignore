@@ -47,3 +47,6 @@ next-env.d.ts
 /.clerk/
 
 .vercel
+
+# keep the example env file
+!.env.example

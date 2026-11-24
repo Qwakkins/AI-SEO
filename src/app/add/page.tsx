@@ -39,7 +39,7 @@ export default function AddBusiness() {
       return;
     }
 
-    router.push("/");
+    router.push("/dashboard");
   }
 
   return (

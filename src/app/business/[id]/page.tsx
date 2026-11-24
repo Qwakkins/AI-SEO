@@ -231,7 +231,7 @@ export default function BusinessDetail() {
 
   return (
     <div>
-      <Link href="/" className="text-blue-400 text-sm hover:underline">
+      <Link href="/dashboard" className="text-blue-400 text-sm hover:underline">
         &larr; Back to Dashboard
       </Link>
 
