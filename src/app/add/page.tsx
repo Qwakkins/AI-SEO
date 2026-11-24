@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
+import { writesEnabled } from "@/lib/access";
 
 export default function AddBusiness() {
   const router = useRouter();
@@ -42,13 +44,33 @@ export default function AddBusiness() {
     router.push("/dashboard");
   }
 
+  if (!writesEnabled()) {
+    return (
+      <div className="py-16 text-center">
+        <h1 className="mb-2 text-2xl font-semibold text-white">
+          Read-only demo
+        </h1>
+        <p className="mb-6 text-gray-400">
+          Adding businesses is turned off on this deployment. Clone the repo to
+          run your own.
+        </p>
+        <Link href="/dashboard" className="text-blue-400 hover:underline">
+          &larr; Back to the dashboard
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-white">Add a Business</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1 text-gray-300">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium mb-1 text-gray-300"
+          >
             Business Name
           </label>
           <input
@@ -62,7 +84,10 @@ export default function AddBusiness() {
         </div>
 
         <div>
-          <label htmlFor="location" className="block text-sm font-medium mb-1 text-gray-300">
+          <label
+            htmlFor="location"
+            className="block text-sm font-medium mb-1 text-gray-300"
+          >
             Location
           </label>
           <input
@@ -76,7 +101,10 @@ export default function AddBusiness() {
         </div>
 
         <div>
-          <label htmlFor="category" className="block text-sm font-medium mb-1 text-gray-300">
+          <label
+            htmlFor="category"
+            className="block text-sm font-medium mb-1 text-gray-300"
+          >
             Category
           </label>
           <input
@@ -108,9 +136,7 @@ export default function AddBusiness() {
           />
         </div>
 
-        {error && (
-          <p className="text-red-400 text-sm">{error}</p>
-        )}
+        {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <div className="pt-2">
           <button

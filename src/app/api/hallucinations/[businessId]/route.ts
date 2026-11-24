@@ -1,16 +1,10 @@
 import { getSupabase } from "@/lib/supabase";
-import { checkBusinessAccess } from "@/lib/auth";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ businessId: string }> }
+  { params }: { params: Promise<{ businessId: string }> },
 ) {
   const { businessId } = await params;
-
-  const access = await checkBusinessAccess(businessId);
-  if (!access) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const supabase = getSupabase();
   if (!supabase) {
@@ -20,7 +14,7 @@ export async function GET(
   const { data: flags, error } = await supabase
     .from("hallucination_flags")
     .select(
-      "*, query_results(platform, queried_at, tracking_queries(query_template))"
+      "*, query_results(platform, queried_at, tracking_queries(query_template))",
     )
     .eq("business_id", businessId)
     .order("created_at", { ascending: false });

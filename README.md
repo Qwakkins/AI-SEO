@@ -6,12 +6,14 @@
 
 Customers increasingly ask ChatGPT or Perplexity "who's the best dentist near me?" instead of searching. GEO Tracker (generative engine optimization) measures how often a local business is recommended by the major AI assistants, who gets recommended instead, and which facts the assistants get wrong about it.
 
+![GEO Tracker landing page](docs/screenshot.jpg)
+
 ## What it does
 
 - **Visibility scans.** Each business has a set of search prompts. A scan sends every prompt to ChatGPT, Claude, Gemini and Perplexity, then records whether the business was named, where it appeared in the answer, and which competitors were listed.
 - **Hallucination detection.** Phone numbers, street addresses, websites and services are extracted from each answer and compared against the owner's verified details. Mismatches are flagged as *incorrect*, *unverifiable* or *not mentioned*, with a confidence score.
 - **Trends.** Results roll up into one mention rate per platform per day, charted over time. A weekly Vercel Cron job rescans every business.
-- **Access control.** Clerk sign-in with per-business roles (admin, editor, viewer), enforced in every API route.
+- **Read-only public demo.** The live site lets anyone browse the dashboard and reports. Adding businesses, editing facts and running scans (which spend AI API credits) are disabled unless `NEXT_PUBLIC_ALLOW_WRITES=true`, and every write route checks that flag server-side.
 
 ## How it works
 
@@ -35,7 +37,7 @@ prompts ──► platforms/{chatgpt,claude,gemini,perplexity}.ts
 | Scanner pipeline | `src/lib/scanner/` |
 | API routes (scan, results, ground truth, flags, cron) | `src/app/api/` |
 | Dashboard and business detail pages | `src/app/dashboard`, `src/app/business/[id]` |
-| Auth and role checks | `src/lib/auth.ts`, `src/middleware.ts` |
+| Read-only guard | `src/lib/access.ts` |
 | Database schema (Postgres migrations) | `supabase/` |
 | Unit tests | `src/lib/scanner/__tests__/` |
 
@@ -48,17 +50,17 @@ Some design choices:
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Supabase (Postgres) · Clerk · OpenAI, Anthropic, Gemini and Perplexity APIs · Recharts · Tailwind CSS 4 · Vitest · Vercel (hosting and cron)
+Next.js 16 (App Router) · React 19 · TypeScript · Supabase (Postgres) · OpenAI, Anthropic, Gemini and Perplexity APIs · Recharts · Tailwind CSS 4 · Vitest · Vercel (hosting and cron)
 
 ## Run it locally
 
-Requires Node 20+, a Supabase project, a Clerk application, and at least one AI platform key.
+Requires Node 20+, a Supabase project and at least one AI platform key.
 
 ```bash
 git clone https://github.com/Qwakkins/AI-SEO.git
 cd AI-SEO
 npm install
-cp .env.example .env.local   # fill in the values
+cp .env.example .env.local   # fill in the values; set NEXT_PUBLIC_ALLOW_WRITES=true
 ```
 
 Run the SQL files in `supabase/` in order (`001` to `006`) in the Supabase SQL editor, then:

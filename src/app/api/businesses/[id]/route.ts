@@ -1,16 +1,11 @@
 import { getSupabase } from "@/lib/supabase";
-import { checkBusinessAccess, requireAuth } from "@/lib/auth";
+import { readOnlyResponse, writesEnabled } from "@/lib/access";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-
-  const access = await checkBusinessAccess(id);
-  if (!access) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const supabase = getSupabase();
   if (!supabase) {
@@ -48,14 +43,11 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
-  const { isAdmin } = await requireAuth();
-  if (!isAdmin) {
-    return Response.json({ error: "Forbidden — admin only" }, { status: 403 });
-  }
+  if (!writesEnabled()) return readOnlyResponse();
 
   const supabase = getSupabase();
   if (!supabase) {

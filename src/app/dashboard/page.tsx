@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { writesEnabled } from "@/lib/access";
 
 interface Business {
   id: string;
@@ -38,16 +39,20 @@ export default function Dashboard() {
   if (businesses.length === 0) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-2xl font-semibold mb-2 text-white">No businesses tracked yet</h2>
+        <h2 className="text-2xl font-semibold mb-2 text-white">
+          No businesses tracked yet
+        </h2>
         <p className="text-gray-400 mb-6">
-          Add a business to start tracking its AI visibility.
+          Businesses appear here once they are added and scanned.
         </p>
-        <Link
-          href="/add"
-          className="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-        >
-          + Add Your First Business
-        </Link>
+        {writesEnabled() && (
+          <Link
+            href="/add"
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors"
+          >
+            + Add Your First Business
+          </Link>
+        )}
       </div>
     );
   }
