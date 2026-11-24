@@ -5,10 +5,12 @@ export async function queryGemini(prompt: string): Promise<string> {
   }
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    // gemini-2.0-flash is deprecated; 3.8 Flash is the current stable Flash model
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      // Send the key in a header so it never appears in URLs or request logs
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
       }),

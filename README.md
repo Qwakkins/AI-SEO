@@ -54,7 +54,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Supabase (Postgres) · Open
 
 ## Run it locally
 
-Requires Node 20+, a Supabase project and at least one AI platform key.
+Requires Node 24+, a Supabase project and at least one AI platform key.
 
 ```bash
 git clone https://github.com/Qwakkins/AI-SEO.git
